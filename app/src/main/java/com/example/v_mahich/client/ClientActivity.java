@@ -57,8 +57,15 @@ public class ClientActivity extends AppCompatActivity {
             Log.i(TAG, "onServiceConnected");
             mService = new Messenger(service);
             mBound = true;
+            // Provide a unique, immutable name for this course
+            // type of feedUrl: String
+            // required
             String feedUrl = "https://loremipsum.org";
+            // Where the files will be placed
+            // type of path: String
+            // optional. default: "Downloads" directory
             String path = "/lorem/ipsum/video/course";
+            // A service to call when the download has been completed, to display notification and update database accordingly
             String callbackService = "com.example.v_mahich.client.CallbackService";
             requestFeedForDownload(feedUrl, path, callbackService);
         }
@@ -75,15 +82,9 @@ public class ClientActivity extends AppCompatActivity {
         if (!mBound) return;
         Bundle b = new Bundle();
         b.putInt("subscribeMode", SUBSCRIBE);
-        // Provide a unique, immutable name for this course
-        // type of feedUrl: String
-        // required
+
         b.putSerializable("feedUrl", feedUrl);
-        // Where the files will be placed
-        // type of path: String
-        // optional. default: "Downloads" directory
         b.putSerializable("destinationPath", path);
-        // A service to call when the download has been completed, to display notification and update database accordingly
         b.putSerializable("callUponSuccess", callbackService);
 
         // Create and send a message to the service, using a supported 'what' value
