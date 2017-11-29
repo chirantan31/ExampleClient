@@ -4,6 +4,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -17,31 +18,40 @@ import android.widget.ToggleButton;
 
 
 /**
- * A sample Activity illustrating how to request for more files/feeds
- * to the Sneakernet Service
+ * Communication Flow between ClientActivity and FileFetcherService:
+ *
+ * 1. Client sends request to FileFetcherService to download bundle
+ * using mFileFetcherServiceMessenger
+ * 2. FileFetcherService starts up, checks if EULA is signed
+ * 2a. If not signed, FileFetcherService requests ClientActivity to start PermissionsActivity
+ * 2b. If signed, takes note of the requested download bundle and calls stopSelf(),
+ * sends errors through mMessenger object if any
+ * 3. FileFetcherService receives the bundle of files from a hub or a peer Calls startService on the
+ * passed callbackService
+ * 4.CallbackService is started, which acts on the new bundle of files.
  */
 public class ClientActivity extends AppCompatActivity {
 
   public static final String TAG = "ClientActivity";
 
-  public static final int DONWLOAD_FEED = 1;
+  public static final int DOWNLOAD_FEED = 1;
 
-  // The two kinds of requests we can send to sneakernet
+  // We can either request to download a new bundle of files, or cancel an existing request to download a bundle of files
   public static final int SUBSCRIBE = 1;
   public static final int UNSUBSCRIBE = 2;
 
-  // The result returned from sneakernet for the request made
+  // The result returned from FileFetcherService for the request made
   public static final int REQUEST_SUCCESSFUL = 1;
   public static final int REQUEST_UNSUCCESSFUL = 2;
 
   /**
-   * Target we publish to Sneakernet to communicate with the
-   * ClientActivity using the Incoming Handler     * .
+   * Messenger object we pass to FileFetcherService to communicate with the
+   * ClientActivity using the Incoming Handler
    */
   final Messenger mMessenger = new Messenger(new IncomingHandler());
-  // Messenger object which allows IPC with the sneakernet service
-  Messenger mService = null;
-  // Indicator if the SneakernetService is still bound to the ClientActivity
+  // Messenger object which allows IPC with the FileFetcherService
+  Messenger mFileFetcherServiceMessenger = null;
+  // Indicator if the FileFetcherService is still bound to the ClientActivity
   boolean mBound;
   // Button to Subscribe/Unsubscribe to feed
   ToggleButton toggleButton;
@@ -53,20 +63,20 @@ public class ClientActivity extends AppCompatActivity {
       // service using a Messenger, so here we get a client-side
       // representation of that from the raw IBinder object.
       Log.i(TAG, "onServiceConnected");
-      mService = new Messenger(service);
+      mFileFetcherServiceMessenger = new Messenger(service);
       mBound = true;
     }
 
     public void onServiceDisconnected(ComponentName className) {
-      // This is called when the connection with the service has been
+      // This is called when the connection with the FileFetcherService has been
       // unexpectedly disconnected -- that is, its process crashed.
-      mService = null;
+      mFileFetcherServiceMessenger = null;
       mBound = false;
     }
   };
 
   /**
-   * Method to send a Request to Sneakernet
+   * Method to send a Request to FileFetcherService
    *
    * @param feedUrl Provide a unique, immutable name for this course
    * @param path Where the files will be placed
@@ -74,24 +84,24 @@ public class ClientActivity extends AppCompatActivity {
    * @param callbackService A service to call when the download has been completed, to display
    * notification and update database accordingly
    */
-  public void sendRequestToSneakernet(String feedUrl, String path, int subscribeMode,
-      String callbackService) {
+  public void sendRequestToFileFetcherService(String feedUrl, Uri path, int subscribeMode,
+      ComponentName callbackService) {
     if (!mBound) {
       return;
     }
     Bundle b = new Bundle();
     b.putInt("subscribeMode", subscribeMode);
     b.putSerializable("feedUrl", feedUrl);
-    b.putSerializable("destinationPath", path);
-    b.putSerializable("callUponSuccess", callbackService);
+    b.putParcelable("destinationPath", path);
+    b.putParcelable("callUponSuccess", callbackService);
 
-    // Create and send a message to the service, using a supported 'what' value
-    Message msg = Message.obtain(null, DONWLOAD_FEED, 0, 0);
-    // The Messenger object which allows the Sneakernet Service to communicate with the ClientActivity
+    // Create and send a message to the FileFetcherService, using a supported 'what' value
+    Message msg = Message.obtain(null, DOWNLOAD_FEED, 0, 0);
+    // The Messenger object which allows the FileFetcherService to communicate with the ClientActivity
     msg.replyTo = mMessenger;
     msg.setData(b);
     try {
-      mService.send(msg);
+      mFileFetcherServiceMessenger.send(msg);
     } catch (RemoteException e) {
       e.printStackTrace();
     }
@@ -111,16 +121,17 @@ public class ClientActivity extends AppCompatActivity {
       @Override
       public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
         if (!mBound) {
-          Log.w(TAG, "Not bound to Sneakernet Service");
+          Log.w(TAG, "Not bound to FileFetcherService");
           return;
         }
         String feedUrl = "https://loremipsum.org";
-        String path = "/lorem/ipsum/video/course";
-        String callbackService = "com.example.v_mahich.client.CalbackService";
+        Uri path = Uri.parse("/lorem/ipsum/video/course");
+        ComponentName callbackService = new ComponentName("com.example.v_mahich.client",
+            "com.example.v_mahich.client.CallbackService");
         if (isChecked) {
-          sendRequestToSneakernet(feedUrl, path, SUBSCRIBE, callbackService);
+          sendRequestToFileFetcherService(feedUrl, path, SUBSCRIBE, callbackService);
         } else {
-          sendRequestToSneakernet(feedUrl, path, UNSUBSCRIBE, callbackService);
+          sendRequestToFileFetcherService(feedUrl, path, UNSUBSCRIBE, callbackService);
         }
       }
     });
@@ -144,7 +155,7 @@ public class ClientActivity extends AppCompatActivity {
   }
 
   /**
-   * Handler of incoming messages from SneakernetService.
+   * Handler of incoming messages from FileFetcherService.
    * This returns the result of our request to subscribe/unsubscribe to a field.
    */
   class IncomingHandler extends Handler {
@@ -156,7 +167,7 @@ public class ClientActivity extends AppCompatActivity {
           Log.i(TAG, "Request completed Successfully.");
           break;
         case REQUEST_UNSUCCESSFUL:
-          Log.i(TAG, "Request failed.");
+          Log.i(TAG, "Request failed:" + msg.getData().getString("errorMsg"));
           break;
         default:
           super.handleMessage(msg);
