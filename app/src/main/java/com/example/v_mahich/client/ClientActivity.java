@@ -128,8 +128,8 @@ public class ClientActivity extends AppCompatActivity {
         }
         String feedUrl = "https://loremipsum.org";
         Uri path = Uri.parse("/lorem/ipsum/video/course");
-        ComponentName callbackService = new ComponentName("com.example.v_mahich.client",
-            "com.example.v_mahich.client.CallbackService");
+        ComponentName callbackService = new ComponentName("com.msr.mediafeed",
+            "com.msr.mediafeed.FileFetcherService");
         if (isChecked) {
           sendRequestToFileFetcherService(feedUrl, path, SUBSCRIBE, callbackService);
         } else {
