@@ -43,7 +43,7 @@ public class ClientActivity extends AppCompatActivity {
   // The result returned from FileFetcherService for the request made
   public static final int REQUEST_SUCCESSFUL = 1;
   public static final int REQUEST_UNSUCCESSFUL = 2;
-
+  public static final int REQUEST_PERMISSIONS_REQUIRED = 3;
   /**
    * Messenger object we pass to FileFetcherService to communicate with the
    * ClientActivity using the Incoming Handler
@@ -111,11 +111,13 @@ public class ClientActivity extends AppCompatActivity {
   protected void onStart() {
     super.onStart();
     // Bind to the service
-    Intent i = new Intent();
+   /* Intent i = new Intent();
     i.setComponent(
         new ComponentName("com.example.v_mahich.server", "com.example.v_mahich.server.MyService"));
     bindService(i, mConnection,
-        Context.BIND_AUTO_CREATE);
+        Context.BIND_AUTO_CREATE);*/
+
+
 
     toggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
       @Override
@@ -168,6 +170,12 @@ public class ClientActivity extends AppCompatActivity {
           break;
         case REQUEST_UNSUCCESSFUL:
           Log.i(TAG, "Request failed:" + msg.getData().getString("errorMsg"));
+          break;
+        case REQUEST_PERMISSIONS_REQUIRED:
+          Intent i = new Intent();
+          i.setComponent(
+              new ComponentName("com.msr.mediafeed", "com.msr.mediafeed.activities.PermissionsActivity"));
+          startActivity(i);
           break;
         default:
           super.handleMessage(msg);
