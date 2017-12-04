@@ -84,14 +84,14 @@ public class ClientActivity extends AppCompatActivity {
    * @param callbackService A service to call when the download has been completed, to display
    * notification and update database accordingly
    */
-  public void sendRequestToFileFetcherService(String feedUrl, Uri path, int subscribeMode,
+  public void sendRequestToFileFetcherService(String feedTag, Uri path, int subscribeMode,
       ComponentName callbackService) {
     if (!mBound) {
       return;
     }
     Bundle b = new Bundle();
     b.putInt("subscribeMode", subscribeMode);
-    b.putSerializable("feedUrl", feedUrl);
+    b.putSerializable("feedTag", feedTag);
     b.putParcelable("destinationPath", path);
     b.putParcelable("callUponSuccess", callbackService);
 
@@ -126,14 +126,14 @@ public class ClientActivity extends AppCompatActivity {
           Log.w(TAG, "Not bound to FileFetcherService");
           return;
         }
-        String feedUrl = "https://loremipsum.org";
+        String feedTag = "Algebra-Basic";
         Uri path = Uri.parse("/lorem/ipsum/video/course");
         ComponentName callbackService = new ComponentName("com.msr.mediafeed",
             "com.msr.mediafeed.FileFetcherService");
         if (isChecked) {
-          sendRequestToFileFetcherService(feedUrl, path, SUBSCRIBE, callbackService);
+          sendRequestToFileFetcherService(feedTag, path, SUBSCRIBE, callbackService);
         } else {
-          sendRequestToFileFetcherService(feedUrl, path, UNSUBSCRIBE, callbackService);
+          sendRequestToFileFetcherService(feedTag, path, UNSUBSCRIBE, callbackService);
         }
       }
     });
